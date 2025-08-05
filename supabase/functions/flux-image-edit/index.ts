@@ -126,9 +126,9 @@ Deno.serve(async (req) => {
 
     // Poll for result using the polling_url from the response (required for global endpoint)
     let attempts = 0
-    const maxAttempts = 40 // 2 minutes max with exponential backoff
+    const maxAttempts = 60 // 3 minutes max with exponential backoff
     let result: FluxResult
-    let delay = 1000 // Start with 1 second
+    let delay = 2000 // Start with 2 seconds
 
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, delay))
@@ -143,9 +143,25 @@ Deno.serve(async (req) => {
         })
 
         if (!pollResponse.ok) {
-          console.error('Polling error:', pollResponse.status)
+          console.error(`Polling error: ${pollResponse.status} - ${pollResponse.statusText}`)
+          console.error(`Polling URL: ${createResult.polling_url}`)
+          
+          // Handle different error types
+          if (pollResponse.status === 429) {
+            // Rate limit - longer backoff
+            delay = Math.min(delay * 2, 10000)
+          } else if (pollResponse.status >= 500) {
+            // Server error - moderate backoff
+            delay = Math.min(delay * 1.5, 8000)
+          } else if (pollResponse.status === 404) {
+            // Not found - might be too early, shorter backoff
+            delay = Math.min(delay * 1.2, 3000)
+          } else {
+            // Other client errors - standard backoff
+            delay = Math.min(delay * 1.5, 5000)
+          }
+          
           attempts++
-          delay = Math.min(delay * 1.5, 5000) // Exponential backoff, max 5 seconds
           continue
         }
 
@@ -157,14 +173,19 @@ Deno.serve(async (req) => {
           break
         } else if (result.status === 'Error' || result.status === 'Failed') {
           throw new Error(`Image editing failed: ${JSON.stringify(result)}`)
+        } else if (result.status === 'Content Moderated') {
+          throw new Error('Content was moderated and cannot be processed')
+        } else if (result.status === 'Request Moderated') {
+          throw new Error('Request was moderated and cannot be processed')
         }
 
         attempts++
-        delay = Math.min(delay * 1.2, 5000) // Gradual increase for pending status
+        // Reset delay on successful response
+        delay = Math.max(2000, delay * 0.9) // Gradually reduce delay but keep minimum
       } catch (pollError) {
         console.error('Error during polling:', pollError)
         attempts++
-        delay = Math.min(delay * 1.5, 5000)
+        delay = Math.min(delay * 1.5, 8000)
         if (attempts >= maxAttempts) {
           throw pollError
         }
