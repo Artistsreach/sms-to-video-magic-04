@@ -1,0 +1,13 @@
+project_id = "inrveiaulksfmzsbyzqj"
+
+[functions.twilio-webhook]
+verify_jwt = false
+
+[functions.generate-video]
+verify_jwt = false
+
+[functions.flux-image-edit]
+verify_jwt = false
+
+[functions.send-edited-image]
+verify_jwt = false
