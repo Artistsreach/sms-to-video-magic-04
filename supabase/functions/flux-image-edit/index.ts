@@ -122,8 +122,9 @@ Deno.serve(async (req) => {
 
     const createResult: FluxResponse = await createResponse.json()
     console.log('FLUX request created:', createResult.id)
+    console.log('Polling URL:', createResult.polling_url)
 
-    // Poll for result with exponential backoff using the correct endpoint
+    // Poll for result using the polling_url from the response (required for global endpoint)
     let attempts = 0
     const maxAttempts = 40 // 2 minutes max with exponential backoff
     let result: FluxResult
@@ -133,7 +134,8 @@ Deno.serve(async (req) => {
       await new Promise(resolve => setTimeout(resolve, delay))
       
       try {
-        const pollResponse = await fetch(`https://api.bfl.ai/v1/get_result?id=${createResult.id}`, {
+        // Use the polling_url returned by the API instead of constructing our own
+        const pollResponse = await fetch(createResult.polling_url, {
           headers: {
             'accept': 'application/json',
             'x-key': bflApiKey,
