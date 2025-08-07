@@ -396,7 +396,7 @@ async function sendCompletionMessage(conversationId: string, videoUrl: string) {
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
   const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER')!
 
-  const message = videoUrl
+  const message = `🎬 Your video is ready! Watch it here: ${videoUrl}\n\nSend me another image to create more videos!`
 
   const twilioResponse = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
